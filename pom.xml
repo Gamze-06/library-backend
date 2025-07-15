@@ -63,7 +63,7 @@
 		<!-- mapstruct -->
 
 	</dependencies>
-
+	
 	<build>
 		<plugins>
 			<plugin>
