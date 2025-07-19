@@ -1,0 +1,25 @@
+@keyframes rainbowAnimation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animatedTitle {
+  font-weight: 800;
+  font-size: 4rem;
+  background: linear-gradient(270deg,  #3eff21, #545353, #8e44ad, #e74c3c, #3498db);
+  background-size: 1000% 1000%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rainbowAnimation 20s ease infinite;
+  user-select: none;
+  margin-top: 200px;
+  text-align: center;
+  text-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+}
