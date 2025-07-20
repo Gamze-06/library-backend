@@ -14,7 +14,11 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOriginPatterns("http://localhost:*", "https://*.vercel.app")
+                        .allowedOrigins(
+                                "http://localhost:5173",  // Vite default
+                                "http://localhost:5174",  // Eğer port değişirse
+                                "https://library-frontend.vercel.app"  // senin deploy ettiğin domain neyse
+                        )
                         .allowedMethods("GET", "POST", "PUT", "DELETE")
                         .allowedHeaders("*")
                         .allowCredentials(true);
