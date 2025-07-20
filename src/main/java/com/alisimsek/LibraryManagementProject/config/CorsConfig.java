@@ -7,15 +7,20 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class CorsConfig {
+
     @Bean
     public WebMvcConfigurer corsConfigurer() {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins("http://localhost:5175") // 🔧 düzeltildi
-                        .allowedMethods("GET", "POST", "PUT", "DELETE")
-                        .allowedHeaders("Authorization", "Content-Type");
+                        .allowedOriginPatterns(
+                            "http://localhost:*",                // Tüm local geliştirme portları
+                            "https://library-frontend.vercel.app" // Örnek canlı frontend URL'i
+                        )
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedHeaders("*")
+                        .allowCredentials(true); // Eğer token/cookie gibi şeyler kullanıyorsan
             }
         };
     }
