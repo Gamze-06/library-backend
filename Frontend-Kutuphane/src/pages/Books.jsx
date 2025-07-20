@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Notification from "../components/Notification";
 
-const API_BASE_URL = "http://localhost:8080/api/v1/books";
+const API_BASE_URL = "https://library-backend-qs9i.onrender.com/api/v1/books";
 
 function Books() {
   const [books, setBooks] = useState([]);
