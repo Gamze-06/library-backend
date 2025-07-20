@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Notification from "../components/Notification";
 
-const API_BASE_URL = "http://localhost:8080/api/v1/authors"; // Backend API URL
+const API_BASE_URL = "https://library-backend-qs9i.onrender.com/api/v1/authors";
 
 function Authors() {
   const [authors, setAuthors] = useState([]);

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import Notification from "../components/Notification";
 
+const API_BASE_URL = "https://library-backend-qs9i.onrender.com/api/v1/borrows";
+
 function Borrows() {
   const users = [
     { id: 1, name: "Ali" },
@@ -23,6 +25,7 @@ function Borrows() {
   const [selectedBook, setSelectedBook] = useState("");
   const [message, setMessage] = useState(null);
 
+  // Mesaj zamanlayıcısı
   useEffect(() => {
     if (message) {
       const timer = setTimeout(() => setMessage(null), 3000);
@@ -30,37 +33,67 @@ function Borrows() {
     }
   }, [message]);
 
+  // Sayfa açıldığında verileri çek
+  useEffect(() => {
+    fetchBorrows();
+  }, []);
+
+  const fetchBorrows = () => {
+    fetch(API_BASE_URL)
+      .then((res) => {
+        if (!res.ok) throw new Error("Veri alınamadı");
+        return res.json();
+      })
+      .then((data) => setBorrows(data))
+      .catch(() =>
+        setMessage({ text: "Ödünç kayıtları yüklenemedi.", type: "danger" })
+      );
+  };
+
   const handleBorrow = () => {
     if (!selectedUser || !selectedBook) {
       setMessage({ text: "Lütfen kullanıcı ve kitap seçiniz.", type: "danger" });
       return;
     }
 
-    const alreadyBorrowed = borrows.find(
-      (b) => b.bookId === parseInt(selectedBook)
-    );
-
-    if (alreadyBorrowed) {
-      setMessage({ text: "Bu kitap zaten ödünç alınmış.", type: "warning" });
-      return;
-    }
-
     const newBorrow = {
-      id: borrows.length ? borrows[borrows.length - 1].id + 1 : 1,
       userId: parseInt(selectedUser),
       bookId: parseInt(selectedBook),
-      date: new Date().toLocaleDateString(),
+      date: new Date().toISOString(), // Backend formatına uygun
     };
 
-    setBorrows([...borrows, newBorrow]);
-    setSelectedUser("");
-    setSelectedBook("");
-    setMessage({ text: "Kitap başarıyla ödünç alındı.", type: "success" });
+    fetch(API_BASE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newBorrow),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Ekleme başarısız");
+        return res.json();
+      })
+      .then((createdBorrow) => {
+        setBorrows([...borrows, createdBorrow]);
+        setSelectedUser("");
+        setSelectedBook("");
+        setMessage({ text: "Kitap başarıyla ödünç alındı.", type: "success" });
+      })
+      .catch(() =>
+        setMessage({ text: "Ödünç alma başarısız oldu.", type: "danger" })
+      );
   };
 
   const handleReturn = (id) => {
-    setBorrows(borrows.filter((b) => b.id !== id));
-    setMessage({ text: "Kitap başarıyla iade edildi.", type: "success" });
+    fetch(`${API_BASE_URL}/${id}`, {
+      method: "DELETE",
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Silme başarısız");
+        setBorrows(borrows.filter((b) => b.id !== id));
+        setMessage({ text: "Kitap başarıyla iade edildi.", type: "success" });
+      })
+      .catch(() =>
+        setMessage({ text: "İade işlemi başarısız oldu.", type: "danger" })
+      );
   };
 
   const getUserName = (id) => users.find((u) => u.id === id)?.name || "";
@@ -135,7 +168,7 @@ function Borrows() {
               <td>{borrow.id}</td>
               <td>{getUserName(borrow.userId)}</td>
               <td>{getBookTitle(borrow.bookId)}</td>
-              <td>{borrow.date}</td>
+              <td>{new Date(borrow.date).toLocaleDateString()}</td>
               <td>
                 <button
                   className="btn btn-danger btn-sm"
