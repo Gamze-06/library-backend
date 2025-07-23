@@ -1,106 +1,98 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import Notification from "../components/Notification";
 
 const API_BASE_URL = "https://library-backend-qs9i.onrender.com/api/v1/books";
 
 function Books() {
+  // States such as book list, new book name, book ID and name to be edited
   const [books, setBooks] = useState([]);
   const [newBookName, setNewBookName] = useState("");
   const [editId, setEditId] = useState(null);
   const [editName, setEditName] = useState("");
   const [message, setMessage] = useState(null);
 
+  //Auto hide message 3 seconds after shown
   useEffect(() => {
     if (message) {
       const timer = setTimeout(() => setMessage(null), 3000);
       return () => clearTimeout(timer);
     }
   }, [message]);
-
+// Fetch books when page loads
   useEffect(() => {
     fetchBooks();
   }, []);
 
-  const fetchBooks = () => {
-    fetch(API_BASE_URL)
-      .then((res) => {
-        if (!res.ok) throw new Error("Kitaplar yüklenemedi");
-        return res.json();
-      })
-      .then((data) => setBooks(data))
-      .catch(() =>
-        setMessage({ text: "Kitaplar yüklenirken hata oluştu.", type: "danger" })
-      );
+  const fetchBooks = async () => {
+    try {
+      const response = await axios.get(API_BASE_URL);
+      setBooks(response.data);
+    } catch (error) {
+      console.error("Kitapları çekerken hata:", error);
+      setMessage({ text: "Kitaplar yüklenirken hata oluştu.", type: "danger" });
+    }
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!newBookName.trim()) {
       setMessage({ text: "Kitap adı boş bırakılamaz.", type: "danger" });
       return;
     }
 
-    fetch(API_BASE_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newBookName }),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Kitap eklenemedi");
-        return res.json();
-      })
-      .then((createdBook) => {
-        setBooks([...books, createdBook]);
-        setNewBookName("");
-        setMessage({ text: "Kitap başarıyla eklendi.", type: "success" });
-      })
-      .catch(() =>
-        setMessage({ text: "Kitap eklenirken hata oluştu.", type: "danger" })
-      );
+    try {
+      const response = await axios.post(API_BASE_URL, { name: newBookName });
+      setBooks([...books, response.data]);
+      setNewBookName("");
+      setMessage({ text: "Kitap başarıyla eklendi.", type: "success" });
+    } catch (error) {
+      console.error("Kitap eklenirken hata:", error);
+      setMessage({ text: "Kitap eklenirken hata oluştu.", type: "danger" });
+    }
   };
 
-  const handleDelete = (id) => {
-    fetch(`${API_BASE_URL}/${id}`, { method: "DELETE" })
-      .then((res) => {
-        if (!res.ok) throw new Error("Kitap silinemedi");
-        setBooks(books.filter((b) => b.id !== id));
-        setMessage({ text: "Kitap silindi.", type: "success" });
-      })
-      .catch(() =>
-        setMessage({ text: "Kitap silinirken hata oluştu.", type: "danger" })
-      );
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/${id}`);
+      setBooks(books.filter((b) => b.id !== id));
+      setMessage({ text: "Kitap silindi.", type: "success" });
+    } catch (error) {
+      console.error("Kitap silinirken hata:", error);
+      setMessage({ text: "Kitap silinirken hata oluştu.", type: "danger" });
+    }
   };
+
+  // Information about the selected book is taken to switch to edit mode
 
   const startEdit = (book) => {
     setEditId(book.id);
     setEditName(book.name);
   };
 
-  const saveEdit = () => {
+  // Book update process
+  const saveEdit = async () => {
     if (!editName.trim()) {
       setMessage({ text: "Kitap adı boş bırakılamaz.", type: "danger" });
       return;
     }
 
-    fetch(`${API_BASE_URL}/${editId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editName }),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Kitap güncellenemedi");
-        return res.json();
-      })
-      .then((updatedBook) => {
-        setBooks(books.map((b) => (b.id === editId ? updatedBook : b)));
-        setEditId(null);
-        setEditName("");
-        setMessage({ text: "Kitap güncellendi.", type: "success" });
-      })
-      .catch(() =>
-        setMessage({ text: "Kitap güncellenirken hata oluştu.", type: "danger" })
-      );
+    try {
+      const response = await axios.put(`${API_BASE_URL}/${editId}`, {
+        name: editName,
+      });
+
+      // The updated book is reflected in the list
+      setBooks(books.map((b) => (b.id === editId ? response.data : b)));
+      setEditId(null);
+      setEditName("");
+      setMessage({ text: "Kitap güncellendi.", type: "success" });
+    } catch (error) {
+      console.error("Kitap güncellenirken hata:", error);
+      setMessage({ text: "Kitap güncellenirken hata oluştu.", type: "danger" });
+    }
   };
 
+  // Editing operation is canceled
   const cancelEdit = () => {
     setEditId(null);
     setEditName("");

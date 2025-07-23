@@ -1,31 +1,28 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 import Notification from "../components/Notification";
 
-const API_BASE_URL = "https://library-backend-qs9i.onrender.com/api/v1/borrows";
+const BORROW_API = "https://library-backend-qs9i.onrender.com/api/v1/borrows";
+const BOOKS_API = "https://library-backend-qs9i.onrender.com/api/v1/books";
 
 function Borrows() {
-  const users = [
-    { id: 1, name: "Ali" },
-    { id: 2, name: "Ayşe Güler" },
-    { id: 3, name: "Mehmet Yılmaz" },
-    { id: 4, name: "Fatma Kaya" },
-    { id: 5, name: "Ahmet Çelik" },
-  ];
-
-  const books = [
-    { id: 1, title: "Suç ve Ceza" },
-    { id: 2, title: "1984" },
-    { id: 3, title: "Sefiller" },
-    { id: 4, title: "Körlük" },
-    { id: 5, title: "Hobbit" },
-  ];
-
+  // States that keep borrowing records and book lists
   const [borrows, setBorrows] = useState([]);
-  const [selectedUser, setSelectedUser] = useState("");
-  const [selectedBook, setSelectedBook] = useState("");
+  const [books, setBooks] = useState([]);
+  // State that holds the form data (borrower information and selected book)
+  const [form, setForm] = useState({
+    borrowerName: "",
+    borrowerMail: "",
+    bookId: "",
+  });
+  // Message informing the user (success, error)
   const [message, setMessage] = useState(null);
 
-  // Mesaj zamanlayıcısı
+  useEffect(() => {
+    fetchBorrows();
+    fetchBooks();
+  }, []);
+
   useEffect(() => {
     if (message) {
       const timer = setTimeout(() => setMessage(null), 3000);
@@ -33,75 +30,83 @@ function Borrows() {
     }
   }, [message]);
 
-  // Sayfa açıldığında verileri çek
-  useEffect(() => {
-    fetchBorrows();
-  }, []);
-
-  const fetchBorrows = () => {
-    fetch(API_BASE_URL)
-      .then((res) => {
-        if (!res.ok) throw new Error("Veri alınamadı");
-        return res.json();
-      })
-      .then((data) => setBorrows(data))
-      .catch(() =>
-        setMessage({ text: "Ödünç kayıtları yüklenemedi.", type: "danger" })
-      );
+  const fetchBorrows = async () => {
+    try {
+      const res = await axios.get(BORROW_API);
+      setBorrows(res.data);
+    } catch (error) {
+      console.error("Borçlar yüklenemedi:", error);
+      setMessage({ text: "Borçlar yüklenirken hata oluştu.", type: "danger" });
+    }
   };
 
-  const handleBorrow = () => {
-    if (!selectedUser || !selectedBook) {
-      setMessage({ text: "Lütfen kullanıcı ve kitap seçiniz.", type: "danger" });
+  const fetchBooks = async () => {
+    try {
+      const res = await axios.get(BOOKS_API);
+      setBooks(res.data);
+    } catch (error) {
+      console.error("Kitaplar yüklenemedi:", error);
+    }
+  };
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleBorrow = async () => {
+    const { borrowerName, borrowerMail, bookId } = form;
+    if (!borrowerName || !borrowerMail || !bookId) {
+      setMessage({ text: "Tüm alanlar zorunludur.", type: "danger" });
       return;
     }
 
-    const newBorrow = {
-      userId: parseInt(selectedUser),
-      bookId: parseInt(selectedBook),
-      date: new Date().toISOString(), // Backend formatına uygun
-    };
+    const today = new Date().toISOString().split("T")[0];
 
-    fetch(API_BASE_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newBorrow),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Ekleme başarısız");
-        return res.json();
-      })
-      .then((createdBorrow) => {
-        setBorrows([...borrows, createdBorrow]);
-        setSelectedUser("");
-        setSelectedBook("");
-        setMessage({ text: "Kitap başarıyla ödünç alındı.", type: "success" });
-      })
-      .catch(() =>
-        setMessage({ text: "Ödünç alma başarısız oldu.", type: "danger" })
-      );
+    try {
+      const res = await axios.post(BORROW_API, {
+        borrowerName,
+        borrowerMail,
+        borrowingDate: today,
+        bookForBorrowingRequest: {
+          id: parseInt(bookId),
+        },
+      });
+      setBorrows([...borrows, res.data]);
+      setForm({ borrowerName: "", borrowerMail: "", bookId: "" });
+      setMessage({ text: "Kitap başarıyla ödünç alındı.", type: "success" });
+    } catch (error) {
+      console.error("Ödünç alma hatası:", error);
+      setMessage({
+        text: error.response?.data?.message || "Ödünç alma işlemi başarısız oldu.",
+        type: "danger",
+      });
+    }
   };
 
-  const handleReturn = (id) => {
-    fetch(`${API_BASE_URL}/${id}`, {
-      method: "DELETE",
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Silme başarısız");
-        setBorrows(borrows.filter((b) => b.id !== id));
-        setMessage({ text: "Kitap başarıyla iade edildi.", type: "success" });
-      })
-      .catch(() =>
-        setMessage({ text: "İade işlemi başarısız oldu.", type: "danger" })
-      );
-  };
+  const handleReturn = async (borrow) => {
+    try {
+      const today = new Date().toISOString().split("T")[0];
 
-  const getUserName = (id) => users.find((u) => u.id === id)?.name || "";
-  const getBookTitle = (id) => books.find((b) => b.id === id)?.title || "";
+      const res = await axios.put(`${BORROW_API}/${borrow.id}`, {
+        borrowerName: borrow.borrowerName,
+        borrowingDate: borrow.borrowingDate,
+        returnDate: today,
+      });
+
+      setBorrows(borrows.map((b) => (b.id === borrow.id ? res.data : b)));
+      setMessage({ text: "Kitap iade edildi.", type: "success" });
+    } catch (error) {
+      console.error("İade işlemi hatası:", error);
+      setMessage({
+        text: error.response?.data?.message || "Kitap iade edilirken hata oluştu.",
+        type: "danger",
+      });
+    }
+  };
 
   return (
     <div className="container mt-5">
-      <h2>Kitap Alma</h2>
+      <h2>Ödünç Alınan Kitaplar</h2>
 
       {message && <Notification message={message.text} type={message.type} />}
 
@@ -109,76 +114,81 @@ function Borrows() {
         className="mb-4"
         style={{ maxWidth: "600px", border: "1px solid #ddd", padding: "15px" }}
       >
-        <h5>Kitap Ödünç Al</h5>
-        <div className="row g-2">
-          <div className="col-md-6">
-            <select
-              className="form-select"
-              value={selectedUser}
-              onChange={(e) => setSelectedUser(e.target.value)}
-            >
-              <option value="">Kullanıcı Seç</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="col-md-6">
-            <select
-              className="form-select"
-              value={selectedBook}
-              onChange={(e) => setSelectedBook(e.target.value)}
-            >
-              <option value="">Kitap Seç</option>
-              {books.map((book) => (
-                <option key={book.id} value={book.id}>
-                  {book.title}
-                </option>
-              ))}
-            </select>
-          </div>
+        <h5>Yeni Ödünç Alma</h5>
+        <div className="d-flex flex-column gap-2">
+          <input
+            type="text"
+            name="borrowerName"
+            placeholder="Ödünç Alan Adı"
+            className="form-control"
+            value={form.borrowerName}
+            onChange={handleChange}
+          />
+          <input
+            type="email"
+            name="borrowerMail"
+            placeholder="Mail Adresi"
+            className="form-control"
+            value={form.borrowerMail}
+            onChange={handleChange}
+          />
+          <select
+            name="bookId"
+            className="form-select"
+            value={form.bookId}
+            onChange={handleChange}
+          >
+            <option value="">Kitap Seçin</option>
+            {books.map((book) => (
+              <option key={book.id} value={book.id}>
+                {book.name}
+              </option>
+            ))}
+          </select>
+          <button className="btn btn-primary mt-2" onClick={handleBorrow}>
+            Ödünç Al
+          </button>
         </div>
-        <button className="btn btn-primary mt-3" onClick={handleBorrow}>
-          Ödünç Al
-        </button>
       </div>
 
-      <table className="table table-bordered" style={{ maxWidth: "700px" }}>
+      <table className="table table-bordered">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Kullanıcı</th>
+            <th>Ad</th>
+            <th>Mail</th>
             <th>Kitap</th>
-            <th>Alış Tarihi</th>
-            <th>İşlemler</th>
+            <th>Alım Tarihi</th>
+            <th>İade Tarihi</th>
+            <th>İşlem</th>
           </tr>
         </thead>
         <tbody>
-          {borrows.length === 0 && (
-            <tr>
-              <td colSpan="5" className="text-center">
-                Henüz ödünç alınan kitap yok.
-              </td>
-            </tr>
-          )}
-          {borrows.map((borrow) => (
-            <tr key={borrow.id}>
-              <td>{borrow.id}</td>
-              <td>{getUserName(borrow.userId)}</td>
-              <td>{getBookTitle(borrow.bookId)}</td>
-              <td>{new Date(borrow.date).toLocaleDateString()}</td>
+          {borrows.map((b) => (
+            <tr key={b.id}>
+              <td>{b.borrowerName}</td>
+              <td>{b.borrowerMail}</td>
+              <td>{b.book?.name}</td>
+              <td>{b.borrowingDate}</td>
+              <td>{b.returnDate || "-"}</td>
               <td>
-                <button
-                  className="btn btn-danger btn-sm"
-                  onClick={() => handleReturn(borrow.id)}
-                >
-                  İade Et
-                </button>
+                {!b.returnDate && (
+                  <button
+                    className="btn btn-sm btn-success"
+                    onClick={() => handleReturn(b)}
+                  >
+                    İade Et
+                  </button>
+                )}
               </td>
             </tr>
           ))}
+          {borrows.length === 0 && (
+            <tr>
+              <td colSpan="6" className="text-center">
+                Ödünç alınan kitap bulunmuyor.
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>

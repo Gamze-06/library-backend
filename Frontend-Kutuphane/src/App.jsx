@@ -1,11 +1,14 @@
+
+// Importing React Router components and pages
+
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
-import Publishers from "./pages/Publishers";
-import Categories from "./pages/Categories";
-import Books from "./pages/Books";
-import Authors from "./pages/Authors";
-import Borrows from "./pages/Borrows";
-import Navbar from "./components/Navbar";
+import Home from "./pages/Home";            //Home component
+import Publishers from "./pages/Publishers";// Publishers page
+import Categories from "./pages/Categories";// Categories page
+import Books from "./pages/Books";          // Books page
+import Authors from "./pages/Authors";      // Authors page
+import Borrows from "./pages/Borrows";      // Borrows page
+import Navbar from "./components/Navbar";   // Navbar component
 
 
 function App() {

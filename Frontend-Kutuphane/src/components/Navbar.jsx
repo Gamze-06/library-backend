@@ -4,7 +4,7 @@ import React from "react";
 function Navbar() {
   const location = useLocation();
 
-  // Aktif linke özel sınıf vermek için küçük yardımcı fonksiyon
+  // Small helper function to give custom class to active link
   const isActive = (path) => (location.pathname === path ? "nav-link active" : "nav-link");
 
   return (

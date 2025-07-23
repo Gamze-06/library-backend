@@ -1,174 +1,184 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import Notification from "../components/Notification";
 
-function Categories() {
-  const [categories, setCategories] = useState([
-    { id: 1, name: "Roman" },
-    { id: 2, name: "Bilim Kurgu" },
-    { id: 3, name: "Fantastik" },
-    { id: 4, name: "Kişisel Gelişim" },
-    { id: 5, name: "Tarih" },
-  ]);
+const API_BASE_URL = "https://library-backend-qs9i.onrender.com/api/v1/categories";
 
-  const [newCategory, setNewCategory] = useState("");
+export default function Categories() {
+  // State that holds all categories
+  const [categories, setCategories] = useState([]);
+  const [newCategory, setNewCategory] = useState({ name: "", description: "" });
   const [editId, setEditId] = useState(null);
-  const [editName, setEditName] = useState("");
+  const [editCategory, setEditCategory] = useState({ name: "", description: "" });
   const [message, setMessage] = useState(null);
-
-  // Bildirim mesajını otomatik gizle
+  // Clear message after 3 seconds
   useEffect(() => {
     if (message) {
-      const timer = setTimeout(() => setMessage(null), 3000);
-      return () => clearTimeout(timer);
+      const t = setTimeout(() => setMessage(null), 3000);
+      return () => clearTimeout(t);
     }
   }, [message]);
 
-  // Ekleme
-  const handleAdd = () => {
-    if (!newCategory.trim()) {
-      setMessage({ text: "Kategori adı boş olamaz.", type: "danger" });
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  async function fetchCategories() {
+    try {
+      const { data } = await axios.get(API_BASE_URL);
+      setCategories(data);
+    } catch (err) {
+      console.error("Fetch categories failed:", err.response || err);
+      setMessage({ text: "Kategoriler yüklenemedi.", type: "danger" });
+    }
+  }
+
+  async function handleAdd() {
+    const name = newCategory.name.trim();
+    const description = newCategory.description.trim();
+
+    if (!name || !description) {
+      setMessage({ text: "Kategori adı ve açıklama boş bırakılamaz.", type: "danger" });
       return;
     }
 
-    const isDuplicate = categories.some(
-      (cat) => cat.name.toLowerCase() === newCategory.toLowerCase()
-    );
-    if (isDuplicate) {
-      setMessage({ text: "Bu kategori zaten mevcut.", type: "danger" });
+    try {
+      const { data } = await axios.post(API_BASE_URL, { name, description });
+      setCategories([...categories, data]);
+      setNewCategory({ name: "", description: "" });
+      setMessage({ text: "Kategori eklendi.", type: "success" });
+    } catch (err) {
+      const errorText = err.response?.data?.message || "Kategori eklenirken hata oluştu.";
+      console.error("Add category failed:", err.response || err);
+      setMessage({ text: errorText, type: "danger" });
+    }
+  }
+
+  // Category deletion
+  async function handleDelete(id) {
+    try {
+      await axios.delete(`${API_BASE_URL}/${id}`);
+      setCategories(categories.filter(c => c.id !== id));
+      setMessage({ text: "Kategori silindi.", type: "success" });
+    } catch (err) {
+      const errorText = err.response?.data?.message || "Kategori silinirken hata oluştu.";
+      console.error("Delete category failed:", err.response || err);
+      setMessage({ text: errorText, type: "danger" });
+    }
+  }
+
+  // Start editing a category
+  function startEdit(cat) {
+    setEditId(cat.id);
+    setEditCategory({ name: cat.name, description: cat.description });
+  }
+
+  async function saveEdit() {
+    const name = editCategory.name.trim();
+    const description = editCategory.description.trim();
+
+    if (!name || !description) {
+      setMessage({ text: "Kategori adı ve açıklama boş bırakılamaz.", type: "danger" });
       return;
     }
 
-    const newEntry = {
-      id: categories.length ? categories[categories.length - 1].id + 1 : 1,
-      name: newCategory,
-    };
-
-    setCategories([...categories, newEntry]);
-    setNewCategory("");
-    setMessage({ text: "Kategori eklendi.", type: "success" });
-  };
-
-  // Silme
-  const handleDelete = (id) => {
-    setCategories(categories.filter((c) => c.id !== id));
-    setMessage({ text: "Kategori silindi.", type: "success" });
-  };
-
-  // Düzenleme başlat
-  const startEdit = (category) => {
-    setEditId(category.id);
-    setEditName(category.name);
-  };
-
-  // Kaydet
-  const saveEdit = () => {
-    if (!editName.trim()) {
-      setMessage({ text: "Kategori adı boş olamaz.", type: "danger" });
-      return;
+    try {
+      const { data } = await axios.put(`${API_BASE_URL}/${editId}`, { name, description });
+      setCategories(categories.map(c => c.id === editId ? data : c));
+      cancelEdit();
+      setMessage({ text: "Kategori güncellendi.", type: "success" });
+    } catch (err) {
+      const errorText = err.response?.data?.message || "Kategori güncellenirken hata oluştu.";
+      console.error("Update category failed:", err.response || err);
+      setMessage({ text: errorText, type: "danger" });
     }
-
-    setCategories(
-      categories.map((cat) =>
-        cat.id === editId ? { ...cat, name: editName } : cat
-      )
-    );
+  }
+  // Cancel editing
+  function cancelEdit() {
     setEditId(null);
-    setEditName("");
-    setMessage({ text: "Kategori güncellendi.", type: "success" });
-  };
-
-  // İptal
-  const cancelEdit = () => {
-    setEditId(null);
-    setEditName("");
-  };
+    setEditCategory({ name: "", description: "" });
+  }
 
   return (
     <div className="container mt-5">
       <h2>Kategoriler</h2>
-
-      {/* Bildirim */}
       {message && <Notification message={message.text} type={message.type} />}
 
-      {/* Ekleme Alanı */}
-      <div
-        className="mb-4"
-        style={{ maxWidth: "500px", border: "1px solid #ddd", padding: "15px" }}
-      >
+      {/* Yeni Kategori Formu */}
+      <div className="mb-4" style={{ maxWidth: "600px", border: "1px solid #ddd", padding: "15px" }}>
         <h5>Yeni Kategori Ekle</h5>
-        <div className="d-flex gap-2">
+        <div className="d-flex flex-column gap-2">
           <input
             type="text"
             className="form-control"
             placeholder="Kategori Adı"
-            value={newCategory}
-            onChange={(e) => setNewCategory(e.target.value)}
+            value={newCategory.name}
+            onChange={e => setNewCategory({ ...newCategory, name: e.target.value })}
           />
-          <button className="btn btn-primary" onClick={handleAdd}>
-            Ekle
-          </button>
+          <textarea
+            className="form-control"
+            placeholder="Açıklama"
+            value={newCategory.description}
+            onChange={e => setNewCategory({ ...newCategory, description: e.target.value })}
+          />
+          <button className="btn btn-primary" onClick={handleAdd}>Ekle</button>
         </div>
       </div>
 
-      {/* Liste */}
-      <table className="table table-bordered" style={{ maxWidth: "600px" }}>
+      {/* Kategoriler Tablosu */}
+      <table className="table table-bordered" style={{ maxWidth: "700px" }}>
         <thead>
           <tr>
             <th>ID</th>
-            <th>Kategori</th>
+            <th>Kategori Adı</th>
+            <th>Açıklama</th>
             <th>İşlemler</th>
           </tr>
         </thead>
         <tbody>
-          {categories.map((cat) => (
-            <tr key={cat.id}>
-              <td>{cat.id}</td>
+          {categories.length === 0 && (
+            <tr>
+              <td colSpan="4" className="text-center">Kayıtlı kategori yok.</td>
+            </tr>
+          )}
+          {categories.map(c => (
+            <tr key={c.id}>
+              <td>{c.id}</td>
               <td>
-                {editId === cat.id ? (
+                {editId === c.id ? (
                   <input
-                    type="text"
                     className="form-control"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
+                    value={editCategory.name}
+                    onChange={e => setEditCategory({ ...editCategory, name: e.target.value })}
                   />
-                ) : (
-                  cat.name
-                )}
+                ) : c.name}
               </td>
               <td>
-                {editId === cat.id ? (
+                {editId === c.id ? (
+                  <textarea
+                    className="form-control"
+                    value={editCategory.description}
+                    onChange={e => setEditCategory({ ...editCategory, description: e.target.value })}
+                  />
+                ) : c.description}
+              </td>
+              <td>
+                {editId === c.id ? (
                   <>
-                    <button className="btn btn-success btn-sm me-2" onClick={saveEdit}>
-                      Kaydet
-                    </button>
-                    <button className="btn btn-secondary btn-sm" onClick={cancelEdit}>
-                      İptal
-                    </button>
+                    <button className="btn btn-success btn-sm me-2" onClick={saveEdit}>Kaydet</button>
+                    <button className="btn btn-secondary btn-sm" onClick={cancelEdit}>İptal</button>
                   </>
                 ) : (
                   <>
-                    <button className="btn btn-warning btn-sm me-2" onClick={() => startEdit(cat)}>
-                      Düzenle
-                    </button>
-                    <button className="btn btn-danger btn-sm" onClick={() => handleDelete(cat.id)}>
-                      Sil
-                    </button>
+                    <button className="btn btn-warning btn-sm me-2" onClick={() => startEdit(c)}>Düzenle</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => handleDelete(c.id)}>Sil</button>
                   </>
                 )}
               </td>
             </tr>
           ))}
-          {categories.length === 0 && (
-            <tr>
-              <td colSpan="3" className="text-center">
-                Kategori bulunamadı.
-              </td>
-            </tr>
-          )}
         </tbody>
       </table>
     </div>
   );
 }
-
-export default Categories;
