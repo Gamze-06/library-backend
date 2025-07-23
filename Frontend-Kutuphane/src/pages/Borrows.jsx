@@ -23,6 +23,7 @@ function Borrows() {
     fetchBooks();
   }, []);
 
+  // Automatically clears the message after 3 seconds whenever 'message' changes
   useEffect(() => {
     if (message) {
       const timer = setTimeout(() => setMessage(null), 3000);
@@ -30,6 +31,7 @@ function Borrows() {
     }
   }, [message]);
 
+  // Fetches borrow data from the API and updates the state
   const fetchBorrows = async () => {
     try {
       const res = await axios.get(BORROW_API);
@@ -40,6 +42,7 @@ function Borrows() {
     }
   };
 
+  // Fetches book data from the API and updates the state
   const fetchBooks = async () => {
     try {
       const res = await axios.get(BOOKS_API);
